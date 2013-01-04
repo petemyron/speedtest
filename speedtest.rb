@@ -21,7 +21,7 @@ def timemillis(time)
 end
 
 class SpeedTest
-	DEBUG=true
+	DEBUG=false
 
 	DOWNLOAD_FILES = [
 		'speedtest/random750x750.jpg',
@@ -42,12 +42,15 @@ class SpeedTest
 		@a = Mechanize.new
 		@a.open_timeout=1
 		@a.read_timeout=1
-		@server_root = pickServer
+		server = pickServer
+		@server_root = server[:url]
+		latency = server[:latency]
 		puts "Server #{@server_root}"
-		s = pretty_speed download
-		puts "Download: #{s}"
-		s = pretty_speed upload
-		puts "Upload: #{s}"
+		downRate = download
+		puts "Download: #{pretty_speed downRate}"
+		upRate = upload
+		puts "Upload: #{pretty_speed upRate}"
+		{:server => @server_root, :latency => latency, :downRate => downRate, :upRate => upRate}
 	end
 
 	def pretty_speed(speed)
@@ -151,7 +154,7 @@ class SpeedTest
 			}}.sort_by { |x| x[:latency] }
 		selected=latency_sorted_servers[0]
 		log "Automatically selected server: #{selected[:url]} - #{selected[:latency]} ms"
-		selected[:url]
+		selected
 	end
 
 	def ping(server)
@@ -173,5 +176,5 @@ end
 
 if __FILE__ == $PROGRAM_NAME
   x = SpeedTest.new(ARGV)
-  x.run
+  x.run.each { |x,y| puts "#{x} => #{y}"}
 end
