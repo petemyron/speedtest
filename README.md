@@ -1,6 +1,6 @@
 Simple speedtest.net command line tool in ruby.
 
-Heavily by https://github.com/fopina/pyspeedtest
+Heavily inspired by https://github.com/fopina/pyspeedtest
 
 Usage:
 =====
