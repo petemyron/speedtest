@@ -1,5 +1,5 @@
 # Speedtest
-A ruby gem for speedtest.net results
+A ruby gem for getting speedtest.net results
 
 Adapted from https://github.com/lacostej/speedtest.rb
 
