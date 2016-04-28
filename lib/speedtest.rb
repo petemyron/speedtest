@@ -22,7 +22,7 @@ module Speedtest
     (time.to_f*1000).to_i
   end
 
-  class SpeedTest
+  class Speedtest
     DEBUG=true
 
     DOWNLOAD_FILES = [
