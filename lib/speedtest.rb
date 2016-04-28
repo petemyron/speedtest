@@ -22,7 +22,7 @@ module Speedtest
     (time.to_f*1000).to_i
   end
 
-  class Speedtest
+  # class Speedtest
     DEBUG=true
 
     DOWNLOAD_FILES = [
@@ -40,7 +40,7 @@ module Speedtest
       #noting yet
     end
 
-    def run
+    def self.run
       @a = Mechanize.new
       @a.user_agent_alias = 'Mac Safari'
       @a.open_timeout=1
@@ -183,7 +183,7 @@ module Speedtest
       }
       times.sort
       times[1,4].inject(:+)*1000/4 # average in milliseconds
-    end
+    # end
   end
 
 if __FILE__ == $PROGRAM_NAME
