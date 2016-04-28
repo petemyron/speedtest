@@ -36,7 +36,7 @@ module Speedtest
     ]
     DOWNLOAD_RUNS=4
 
-    def initialize(argv)
+    def self.initialize(argv)
       #noting yet
     end
 
@@ -56,7 +56,7 @@ module Speedtest
       {:server => @server_root, :latency => latency, :downRate => downRate, :upRate => upRate}
     end
 
-    def pretty_speed(speed)
+    def self.pretty_speed(speed)
       units = [ "bps", "Kbps", "Mbps", "Gbps"]
       idx=0
       while speed > 1024 #&& idx < units.length - 1
@@ -66,13 +66,13 @@ module Speedtest
       "%.2f #{units[idx]}" % speed
     end
 
-    def log(msg)
+    def self.log(msg)
       if DEBUG
         puts msg
       end
     end
 
-    def downloadthread(url)
+    def self.downloadthread(url)
       log "url: #{url}"
       # page = @a.get(url)
       page = HTTParty.get(url)
@@ -80,7 +80,7 @@ module Speedtest
       #log "#{url} #{Thread.current["downloaded"]}"
     end
 
-    def download
+    def self.download
       threads=[]
 
       start_time=Time.new
@@ -102,7 +102,7 @@ module Speedtest
       total_downloaded * 8 / total_time
     end
 
-    def uploadthread(url, myData)
+    def self.uploadthread(url, myData)
       # byebug
       # page = @a.post(url, { :content0 => myData })
       page = HTTParty.post(url, body: { "content": myData })
@@ -110,11 +110,11 @@ module Speedtest
       #log "#{url} #{Thread.current["uploaded"]}"
     end
 
-    def randomString(alphabet, size)
+    def self.randomString(alphabet, size)
       (1.upto(size)).map {alphabet[rand(alphabet.length)] }.join
     end
 
-    def upload
+    def self.upload
       runs=4
       data=[]
       UPLOAD_SIZES.each { |size|
@@ -142,7 +142,7 @@ module Speedtest
       total_uploaded * 8 / total_time
     end
 
-    def pickServer
+    def self.pickServer
       page = @a.get("http://www.speedtest.net/speedtest-config.php")
       ip,lat,lon = page.body.scan(/<client ip="([^"]*)" lat="([^"]*)" lon="([^"]*)"/)[0]
       orig = GeoPoint.new(lat, lon)
@@ -167,7 +167,7 @@ module Speedtest
       selected
     end
 
-    def ping(server)
+    def self.ping(server)
       times=[]
       1.upto(6) {
         start=Time.new
