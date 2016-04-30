@@ -14,7 +14,7 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{Gemmed version of lacostej's speedtest.rb script - Test your speed with speedtest.net!}
   spec.description   = %q{Gemmed version of lacostej's speedtest.rb script @ https://github.com/lacostej/speedtest.rb - Test your speed with speedtest.net!}
   spec.homepage      = "TODO: Get a website..."
-  spec.license       = ["MIT"]
+  spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.require_paths = ["lib"]
