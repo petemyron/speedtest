@@ -3,7 +3,7 @@ require 'nokogiri'
 require 'byebug'
 require 'httparty'
 
-require 'speedtest/geopoint'
+require 'speedtest/geo_point'
 require 'speedtest/result'
 
 module Speedtest
