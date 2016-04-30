@@ -1,7 +1,8 @@
-# coding: utf-8
-# lib = File.expand_path('../lib', __FILE__)
-# $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-$:.push File.expand_path("../lib", __FILE__)
+# encoding: utf-8
+
+lib = File.expand_path('../lib/', __FILE__)
+$:.unshift lib unless $:.include?(lib)
+
 require 'speedtest/version'
 
 Gem::Specification.new do |spec|
@@ -13,13 +14,9 @@ Gem::Specification.new do |spec|
   spec.summary       = %q{Gemmed version of lacostej's speedtest.rb script - Test your speed with speedtest.net!}
   spec.description   = %q{Gemmed version of lacostej's speedtest.rb script @ https://github.com/lacostej/speedtest.rb - Test your speed with speedtest.net!}
   spec.homepage      = "TODO: Get a website..."
-  spec.license       = "WTFPL"
+  spec.license       = ["MIT"]
 
-
-  spec.files         = Dir['lib/*.rb']
-  # spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
-  # spec.bindir        = "exe"
-  # spec.executables   = spec.files.grep(%r{^exe/}) { |f| File.basename(f) }
+  spec.files         = `git ls-files -z`.split("\x0").reject { |f| f.match(%r{^(test|spec|features)/}) }
   spec.require_paths = ["lib"]
 
   spec.add_runtime_dependency "nokogiri", "~> 1.6"
