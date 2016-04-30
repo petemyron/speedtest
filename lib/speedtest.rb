@@ -3,8 +3,8 @@ require 'nokogiri'
 require 'byebug'
 require 'httparty'
 
-require 'speedtest/geo_point'
-require 'speedtest/result'
+require_relative 'speedtest/result'
+require_relative 'speedtest/geo_point'
 
 module Speedtest
   # class GeoPoint
