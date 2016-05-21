@@ -1,4 +1,3 @@
-require 'nokogiri'
 require 'httparty'
 
 require_relative 'speedtest/result'
