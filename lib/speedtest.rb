@@ -81,7 +81,7 @@ module Speedtest
 	  end
 
 	  def uploadthread(url, content)
-	    page = HTTParty.post(url, :body => { "content": content })
+	    page = HTTParty.post(url, :body => { "content" => content })
 	    Thread.current["uploaded"] = page.body.split('=')[1].to_i
 	  end
 
