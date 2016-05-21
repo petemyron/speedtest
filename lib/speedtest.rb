@@ -28,9 +28,9 @@ module Speedtest
 	    upload_rate = upload
 	    log "Upload: #{pretty_speed upload_rate}"
 
-			Result.new(server: @server_root, latency: latency,
-				download_rate: download_rate, pretty_download_rate: pretty_speed(download_rate),
-				pretty_upload_rate: pretty_speed(upload_rate), upload_rate: upload_rate)
+			Result.new(:server => @server_root, :latency => latency,
+				:download_rate => download_rate, :pretty_download_rate => pretty_speed(download_rate),
+				:pretty_upload_rate => pretty_speed(upload_rate), :upload_rate => upload_rate)
 	  end
 
 	  def pretty_speed(speed)
@@ -81,7 +81,7 @@ module Speedtest
 	  end
 
 	  def uploadthread(url, content)
-	    page = HTTParty.post(url, body: { "content": content })
+	    page = HTTParty.post(url, :body => { "content": content })
 	    Thread.current["uploaded"] = page.body.split('=')[1].to_i
 	  end
 
