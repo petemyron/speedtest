@@ -153,9 +153,7 @@ module Speedtest
 	      begin
 	        page = HTTParty.get("#{server}/speedtest/latency.txt")
 	        times << Time.new - start
-	      rescue Timeout::Error
-	        times << 999999
-	      rescue Net::HTTPNotFound
+	      rescue Timeout::Error, Net::HTTPNotFound, Errno::ENETUNREACH
 	        times << 999999
 	      end
 	    }
