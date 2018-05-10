@@ -22,15 +22,17 @@ module Speedtest
 
 	    latency = server[:latency]
 
-	    download_rate = download
+	    download_size, download_time = download
+      download_rate = download_size / download_time
 	    log "Download: #{pretty_speed download_rate}"
 
-	    upload_rate = upload
+	    upload_size, upload_time = upload
+      upload_rate = upload_size / upload_time
 	    log "Upload: #{pretty_speed upload_rate}"
 
 			Result.new(:server => @server_root, :latency => latency,
-				:download_rate => download_rate, :pretty_download_rate => pretty_speed(download_rate),
-				:pretty_upload_rate => pretty_speed(upload_rate), :upload_rate => upload_rate)
+        download_size: download_size, download_time: download_time,
+        upload_size: upload_size, upload_time: upload_time)
 	  end
 
 	  def pretty_speed(speed)
@@ -77,7 +79,7 @@ module Speedtest
 	    total_time = Time.new - start_time
 	    log "Took #{total_time} seconds to download #{total_downloaded} bytes in #{threads.length} threads\n"
 
-	    total_downloaded * 8 / total_time
+	    [ total_downloaded * 8, total_time ]
 	  end
 
 	  def uploadthread(url, content)
@@ -117,7 +119,7 @@ module Speedtest
 	    log "Took #{total_time} seconds to upload #{total_uploaded} bytes in #{threads.length} threads\n"
 
 	    # bytes to bits / time = bps
-	    total_uploaded * 8 / total_time
+	    [ total_uploaded * 8, total_time ]
 	  end
 
 	  def pick_server
@@ -153,7 +155,8 @@ module Speedtest
 	      begin
 	        page = HTTParty.get("#{server}/speedtest/latency.txt")
 	        times << Time.new - start
-	      rescue Timeout::Error, Net::HTTPNotFound, Errno::ENETUNREACH
+	      rescue Timeout::Error, Net::HTTPNotFound, Errno::ENETUNREACH => e
+          log "#{e.class} #{e}"
 	        times << 999999
 	      end
 	    }
