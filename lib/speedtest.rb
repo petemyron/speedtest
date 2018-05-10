@@ -12,7 +12,7 @@ module Speedtest
       @ping_runs = options[:ping_runs]						|| 4
       @download_sizes = options[:download_sizes] 	|| [750, 1500]
       @upload_sizes = options[:upload_sizes]			|| [197190, 483960]
-      @debug = options[:debug]										|| false
+      @logger = options[:logger]
     end
 
     def run()
@@ -46,8 +46,8 @@ module Speedtest
     end
 
     def log(msg)
-      if @debug
-        puts msg
+      if @logger
+        @logger.debug msg
       end
     end
 
