@@ -6,12 +6,14 @@ require_relative 'speedtest/geo_point'
 module Speedtest
   class Test
 
+    class FailedTransfer < StandardError; end
+
     def initialize(options = {})
-      @download_runs = options[:download_runs] 		|| 4
-      @upload_runs = options[:upload_runs] 				|| 4
-      @ping_runs = options[:ping_runs]						|| 4
-      @download_sizes = options[:download_sizes] 	|| [750, 1500]
-      @upload_sizes = options[:upload_sizes]			|| [197190, 483960]
+      @download_runs = options[:download_runs]     || 4
+      @upload_runs = options[:upload_runs]         || 4
+      @ping_runs = options[:ping_runs]             || 4
+      @download_sizes = options[:download_sizes]   || [750, 1500]
+      @upload_sizes = options[:upload_sizes]       || [197190, 483960]
       @logger = options[:logger]
     end
 
@@ -46,19 +48,25 @@ module Speedtest
     end
 
     def log(msg)
-      if @logger
-        @logger.debug msg
-      end
+      @logger.debug msg if @logger
+    end
+
+    def error(msg)
+      @logger.error msg if @logger
     end
 
     def downloadthread(url)
       log "  downloading: #{url}"
       page = HTTParty.get(url)
+      unless page.code / 100 == 2
+        error "GET #{url} failed with code #{page.code}"
+        Thread.current["error"] = true
+      end
       Thread.current["downloaded"] = page.body.length
     end
 
     def download
-    	log "\nstarting download tests:"
+      log "\nstarting download tests:"
       threads = []
 
       start_time = Time.new
@@ -74,6 +82,7 @@ module Speedtest
       threads.each { |t|
         t.join
         total_downloaded += t["downloaded"]
+        raise FailedTransfer.new("Download failed.") if t["error"] == true
       }
 
       total_time = Time.new - start_time
@@ -84,6 +93,10 @@ module Speedtest
 
     def uploadthread(url, content)
       page = HTTParty.post(url, :body => { "content" => content })
+      unless page.code / 100 == 2
+        error "GET #{url} failed with code #{page.code}"
+        Thread.current["error"] = true
+      end
       Thread.current["uploaded"] = page.body.split('=')[1].to_i
     end
 
@@ -92,7 +105,7 @@ module Speedtest
     end
 
     def upload
-    	log "\nstarting upload tests:"
+      log "\nstarting upload tests:"
 
       data = []
       @upload_sizes.each { |size|
@@ -114,6 +127,7 @@ module Speedtest
       threads.each { |t|
         t.join
         total_uploaded += t["uploaded"]
+        raise FailedTransfer.new("Upload failed.") if t["error"] == true
       }
       total_time = Time.new - start_time
       log "Took #{total_time} seconds to upload #{total_uploaded} bytes in #{threads.length} threads\n"
