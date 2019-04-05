@@ -36,8 +36,8 @@ module Speedtest
 	  def pretty_speed(speed)
 	    units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"]
 	    i = 0
-	    while speed > 1024
-	      speed /= 1024
+	    while speed > 1000
+	      speed /= 1000
 	      i += 1
 	    end
 	    "%.2f #{units[i]}" % speed
