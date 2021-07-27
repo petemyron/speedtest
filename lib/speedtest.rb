@@ -157,6 +157,8 @@ module Speedtest
 	        times << 999999
 	      rescue Net::HTTPNotFound
 	        times << 999999
+	      rescue
+	        times << 999999
 	      end
 	    }
 	    times.sort
