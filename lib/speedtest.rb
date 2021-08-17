@@ -6,161 +6,178 @@ require_relative 'speedtest/geo_point'
 module Speedtest
   class Test
 
-	  def initialize(options = {})
-			@download_runs = options[:download_runs] 		|| 4
-			@upload_runs = options[:upload_runs] 				|| 4
-			@ping_runs = options[:ping_runs]						|| 4
-			@download_sizes = options[:download_sizes] 	|| [750, 1500]
-			@upload_sizes = options[:upload_sizes]			|| [197190, 483960]
-			@debug = options[:debug]										|| false
-	  end
+    class FailedTransfer < StandardError; end
 
-	  def run()
-	    server = pick_server
-	    @server_root = server[:url]
-	    log "Server #{@server_root}"
+    def initialize(options = {})
+      @download_runs = options[:download_runs]     || 4
+      @upload_runs = options[:upload_runs]         || 4
+      @ping_runs = options[:ping_runs]             || 4
+      @download_sizes = options[:download_sizes]   || [750, 1500]
+      @upload_sizes = options[:upload_sizes]       || [197190, 483960]
+      @logger = options[:logger]
+    end
 
-	    latency = server[:latency]
+    def run()
+      server = pick_server
+      @server_root = server[:url]
+      log "Server #{@server_root}"
 
-	    download_rate = download
-	    log "Download: #{pretty_speed download_rate}"
+      latency = server[:latency]
 
-	    upload_rate = upload
-	    log "Upload: #{pretty_speed upload_rate}"
+      download_size, download_time = download
+      download_rate = download_size / download_time
+      log "Download: #{pretty_speed download_rate}"
 
-			Result.new(:server => @server_root, :latency => latency,
-				:download_rate => download_rate, :pretty_download_rate => pretty_speed(download_rate),
-				:pretty_upload_rate => pretty_speed(upload_rate), :upload_rate => upload_rate)
-	  end
+      upload_size, upload_time = upload
+      upload_rate = upload_size / upload_time
+      log "Upload: #{pretty_speed upload_rate}"
 
-	  def pretty_speed(speed)
-	    units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"]
-	    i = 0
-	    while speed > 1024
-	      speed /= 1024
-	      i += 1
-	    end
-	    "%.2f #{units[i]}" % speed
-	  end
+      Result.new(:server => @server_root, :latency => latency,
+        download_size: download_size, download_time: download_time,
+        upload_size: upload_size, upload_time: upload_time)
+    end
 
-	  def log(msg)
-	    if @debug
-	      puts msg
-	    end
-	  end
+    def pretty_speed(speed)
+      units = ["bps", "Kbps", "Mbps", "Gbps", "Tbps"]
+      i = 0
+      while speed > 1024
+        speed /= 1024
+        i += 1
+      end
+      "%.2f #{units[i]}" % speed
+    end
 
-	  def downloadthread(url)
-	    log "  downloading: #{url}"
-	    page = HTTParty.get(url)
-	    Thread.current["downloaded"] = page.body.length
-	  end
+    def log(msg)
+      @logger.debug msg if @logger
+    end
 
-	  def download
-	  	log "\nstarting download tests:"
-	    threads = []
+    def error(msg)
+      @logger.error msg if @logger
+    end
 
-	    start_time = Time.new
-	    @download_sizes.each { |size|
-	      1.upto(@download_runs) { |i|
-	        threads << Thread.new { |thread|
-	          downloadthread("#{@server_root}/speedtest/random#{size}x#{size}.jpg")
-	        }
-	      }
-	    }
+    def downloadthread(url)
+      log "  downloading: #{url}"
+      page = HTTParty.get(url)
+      unless page.code / 100 == 2
+        error "GET #{url} failed with code #{page.code}"
+        Thread.current["error"] = true
+      end
+      Thread.current["downloaded"] = page.body.length
+    end
 
-	    total_downloaded = 0
-	    threads.each { |t|
-	      t.join
-	      total_downloaded += t["downloaded"]
-	    }
+    def download
+      log "\nstarting download tests:"
+      threads = []
 
-	    total_time = Time.new - start_time
-	    log "Took #{total_time} seconds to download #{total_downloaded} bytes in #{threads.length} threads\n"
+      start_time = Time.new
+      @download_sizes.each { |size|
+        1.upto(@download_runs) { |i|
+          threads << Thread.new { |thread|
+            downloadthread("#{@server_root}/speedtest/random#{size}x#{size}.jpg")
+          }
+        }
+      }
 
-	    total_downloaded * 8 / total_time
-	  end
+      total_downloaded = 0
+      threads.each { |t|
+        t.join
+        total_downloaded += t["downloaded"]
+        raise FailedTransfer.new("Download failed.") if t["error"] == true
+      }
 
-	  def uploadthread(url, content)
-	    page = HTTParty.post(url, :body => { "content" => content })
-	    Thread.current["uploaded"] = page.body.split('=')[1].to_i
-	  end
+      total_time = Time.new - start_time
+      log "Took #{total_time} seconds to download #{total_downloaded} bytes in #{threads.length} threads\n"
 
-	  def randomString(alphabet, size)
-	    (1.upto(size)).map { alphabet[rand(alphabet.length)] }.join
-	  end
+      [ total_downloaded * 8, total_time ]
+    end
 
-	  def upload
-	  	log "\nstarting upload tests:"
+    def uploadthread(url, content)
+      page = HTTParty.post(url, :body => { "content" => content })
+      unless page.code / 100 == 2
+        error "GET #{url} failed with code #{page.code}"
+        Thread.current["error"] = true
+      end
+      Thread.current["uploaded"] = page.body.split('=')[1].to_i
+    end
 
-	    data = []
-	    @upload_sizes.each { |size|
-	      1.upto(@upload_runs) {
-	        data << randomString(('A'..'Z').to_a, size)
-	      }
-	    }
+    def randomString(alphabet, size)
+      (1.upto(size)).map { alphabet[rand(alphabet.length)] }.join
+    end
 
-	    threads = []
-	    start_time = Time.new
-	    threads = data.map { |data|
-	      Thread.new(data) { |content|
-	        log "  uploading size #{content.size}: #{@server_root}/speedtest/upload.php"
-	        uploadthread("#{@server_root}/speedtest/upload.php", content)
-	      }
-	    }
+    def upload
+      log "\nstarting upload tests:"
 
-	    total_uploaded = 0
-	    threads.each { |t|
-	      t.join
-	      total_uploaded += t["uploaded"]
-	    }
-	    total_time = Time.new - start_time
-	    log "Took #{total_time} seconds to upload #{total_uploaded} bytes in #{threads.length} threads\n"
+      data = []
+      @upload_sizes.each { |size|
+        1.upto(@upload_runs) {
+          data << randomString(('A'..'Z').to_a, size)
+        }
+      }
 
-	    # bytes to bits / time = bps
-	    total_uploaded * 8 / total_time
-	  end
+      threads = []
+      start_time = Time.new
+      threads = data.map { |data|
+        Thread.new(data) { |content|
+          log "  uploading size #{content.size}: #{@server_root}/speedtest/upload.php"
+          uploadthread("#{@server_root}/speedtest/upload.php", content)
+        }
+      }
 
-	  def pick_server
-	    page = HTTParty.get("http://www.speedtest.net/speedtest-config.php")
-	    ip,lat,lon = page.body.scan(/<client ip="([^"]*)" lat="([^"]*)" lon="([^"]*)"/)[0]
-	    orig = GeoPoint.new(lat, lon)
-	    log "Your IP: #{ip}\nYour coordinates: #{orig}\n"
+      total_uploaded = 0
+      threads.each { |t|
+        t.join
+        total_uploaded += t["uploaded"]
+        raise FailedTransfer.new("Upload failed.") if t["error"] == true
+      }
+      total_time = Time.new - start_time
+      log "Took #{total_time} seconds to upload #{total_uploaded} bytes in #{threads.length} threads\n"
 
-	    page = HTTParty.get("http://www.speedtest.net/speedtest-servers.php")
-	    sorted_servers=page.body.scan(/<server url="([^"]*)" lat="([^"]*)" lon="([^"]*)/).map { |x| {
-	      :distance => orig.distance(GeoPoint.new(x[1],x[2])),
-	      :url => x[0].split(/(http:\/\/.*)\/speedtest.*/)[1]
-	    } }
-	    .reject { |x| x[:url].nil? } # reject 'servers' without a domain
-	    .sort_by { |x| x[:distance] }
+      # bytes to bits / time = bps
+      [ total_uploaded * 8, total_time ]
+    end
 
-	    # sort the nearest 10 by download latency
-	    latency_sorted_servers = sorted_servers[0..9].map { |x|
-	      {
-	      :latency => ping(x[:url]),
-	      :url => x[:url]
-	      }}.sort_by { |x| x[:latency] }
-	    selected = latency_sorted_servers[0]
-	    log "Automatically selected server: #{selected[:url]} - #{selected[:latency]} ms"
+    def pick_server
+      page = HTTParty.get("http://www.speedtest.net/speedtest-config.php")
+      ip,lat,lon = page.body.scan(/<client ip="([^"]*)" lat="([^"]*)" lon="([^"]*)"/)[0]
+      orig = GeoPoint.new(lat, lon)
+      log "Your IP: #{ip}\nYour coordinates: #{orig}\n"
 
-	    selected
-	  end
+      page = HTTParty.get("http://www.speedtest.net/speedtest-servers.php")
+      sorted_servers=page.body.scan(/<server url="([^"]*)" lat="([^"]*)" lon="([^"]*)/).map { |x| {
+        :distance => orig.distance(GeoPoint.new(x[1],x[2])),
+        :url => x[0].split(/(http:\/\/.*)\/speedtest.*/)[1]
+      } }
+      .reject { |x| x[:url].nil? } # reject 'servers' without a domain
+      .sort_by { |x| x[:distance] }
 
-	  def ping(server)
-	    times = []
-	    1.upto(@ping_runs) {
-	      start = Time.new
-	      begin
-	        page = HTTParty.get("#{server}/speedtest/latency.txt")
-	        times << Time.new - start
-	      rescue Timeout::Error, Net::HTTPNotFound, Errno::ENETUNREACH
-	        times << 999999
-	      end
-	    }
-	    times.sort
-	    times[1, @ping_runs].inject(:+) * 1000 / @ping_runs # average in milliseconds
-	  end
-	end
+      # sort the nearest 10 by download latency
+      latency_sorted_servers = sorted_servers[0..9].map { |x|
+        {
+        :latency => ping(x[:url]),
+        :url => x[:url]
+        }}.sort_by { |x| x[:latency] }
+      selected = latency_sorted_servers[0]
+      log "Automatically selected server: #{selected[:url]} - #{selected[:latency]} ms"
+
+      selected
+    end
+
+    def ping(server)
+      times = []
+      1.upto(@ping_runs) {
+        start = Time.new
+        begin
+          page = HTTParty.get("#{server}/speedtest/latency.txt")
+          times << Time.new - start
+        rescue Timeout::Error, Net::HTTPNotFound, Errno::ENETUNREACH => e
+          log "#{e.class} #{e}"
+          times << 999999
+        end
+      }
+      times.sort
+      times[1, @ping_runs].inject(:+) * 1000 / @ping_runs # average in milliseconds
+    end
+  end
 end
 
 if __FILE__ == $PROGRAM_NAME
